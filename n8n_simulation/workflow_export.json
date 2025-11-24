@@ -1,0 +1,169 @@
+{
+  "name": "AutoParts Inc - Predictive Maintenance AI Agent",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 2
+            }
+          ]
+        }
+      },
+      "id": "cron-trigger",
+      "name": "Sensor Polling Trigger",
+      "type": "n8n-nodes-base.cron",
+      "typeVersion": 1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Simulate machine sensor data\nconst machines = ['CNC-Mill-01', 'Robotic-Arm-02', 'Laser-Cutter-03', 'Press-04'];\nconst getRandomMachine = () => machines[Math.floor(Math.random() * machines.length)];\nconst getRandomVibration = () => (Math.random() * 10).toFixed(2); // 0-10 scale\n\nconst sensorData = {\n  timestamp: new Date().toISOString(),\n  machineId: getRandomMachine(),\n  vibrationLevel: parseFloat(getRandomVibration()),\n  temperature: (20 + Math.random() * 30).toFixed(1),\n  powerDraw: (50 + Math.random() * 100).toFixed(1)\n};\n\nreturn [{ json: sensorData }];"
+      },
+      "id": "sensor-simulator",
+      "name": "Sensor Data Simulator",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [460, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "vibration-check",
+              "leftValue": "={{ $json.vibrationLevel }}",
+              "rightValue": "7.5",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "predictive-maintenance-agent",
+      "name": "Predictive Maintenance Agent",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Generate maintenance alert\nconst severity = $json.vibrationLevel > 9 ? 'CRITICAL' : $json.vibrationLevel > 8 ? 'HIGH' : 'MEDIUM';\nconst estimatedFailure = $json.vibrationLevel > 9 ? '24-48 hours' : $json.vibrationLevel > 8 ? '3-5 days' : '1-2 weeks';\n\nconst alert = {\n  ...$json,\n  alertId: 'ALT-' + Date.now(),\n  timestamp: new Date().toISOString(),\n  severity: severity,\n  estimatedTimeToFailure: estimatedFailure,\n  recommendedAction: 'Schedule immediate inspection and maintenance',\n  message: `Vibration level ${$json.vibrationLevel} detected on ${$json.machineId}. Predicted failure in ${estimatedFailure}.`\n};\n\nreturn [{ json: alert }];"
+      },
+      "id": "alert-generator",
+      "name": "Maintenance Alert Generator",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Production Orchestrator Agent - Reschedule production\nconst affectedJobs = ['Job-' + (1000 + Math.floor(Math.random() * 100)), 'Job-' + (1100 + Math.floor(Math.random() * 100))];\nconst rescheduledTo = ['CNC-Mill-02', 'CNC-Mill-03'].filter(machine => machine !== $json.machineId)[0];\n\nconst productionUpdate = {\n  ...$json,\n  orchestratorAction: 'PRODUCTION_RESCHEDULE',\n  affectedJobs: affectedJobs,\n  rescheduledTo: rescheduledTo,\n  downtimeEstimated: '4 hours',\n  maintenanceTicket: 'TICKET-' + Date.now(),\n  priority: $json.severity === 'CRITICAL' ? 'P0' : 'P1',\n  orchestratorMessage: `Production rescheduled from ${$json.machineId} to ${rescheduledTo}. Maintenance ticket created.`\n};\n\nconsole.log('Production Orchestrator Action:', productionUpdate);\nreturn [{ json: productionUpdate }];"
+      },
+      "id": "production-orchestrator",
+      "name": "Production Orchestrator Agent",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [1120, 180]
+    },
+    {
+      "parameters": {
+        "subject": "🚨 Predictive Maintenance Alert - {{ $json.machineId }}",
+        "body": "Hi Maintenance Team,<br><br>\n\n<b>Predictive Maintenance Agent has detected an issue:</b><br>\n\nMachine: <b>{{ $json.machineId }}</b><br>\nVibration Level: <b>{{ $json.vibrationLevel }}/10</b><br>\nSeverity: <b>{{ $json.severity }}</b><br>\nPredicted Failure: <b>{{ $json.estimatedTimeToFailure }}</b><br>\nTimestamp: {{ $json.timestamp }}<br><br>\n\n<b>Production Orchestrator has taken the following actions:</b><br>\n- Rescheduled jobs: {{ $json.affectedJobs }}<br>\n- Alternative machine: {{ $json.rescheduledTo }}<br>\n- Maintenance Ticket: {{ $json.maintenanceTicket }}<br>\n- Estimated downtime: {{ $json.downtimeEstimated }}<br><br>\n\n<b>Recommended Action:</b> {{ $json.recommendedAction }}<br><br>\n\nThis is an automated alert from AutoParts Inc. AI Agent System.",
+        "to": "maintenance-team@autoparts-inc.com",
+        "options": {}
+      },
+      "id": "email-alert",
+      "name": "Email Maintenance Team",
+      "type": "n8n-nodes-base.emailSend",
+      "typeVersion": 1,
+      "position": [1340, 180]
+    },
+    {
+      "parameters": {
+        "functionCode": "// Log normal operation\nconst logEntry = {\n  ...$json,\n  status: 'NORMAL',\n  message: `Machine ${$json.machineId} operating within normal parameters. Vibration: ${$json.vibrationLevel}`,\n  timestamp: new Date().toISOString()\n};\n\nconsole.log('Normal Operation:', logEntry);\nreturn [{ json: logEntry }];"
+      },
+      "id": "normal-logger",
+      "name": "Log Normal Operation",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [900, 460]
+    }
+  ],
+  "connections": {
+    "Cron": {
+      "main": [
+        [
+          {
+            "node": "Sensor Data Simulator",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function": {
+      "main": [
+        [
+          {
+            "node": "Predictive Maintenance Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IF": {
+      "main": [
+        [
+          {
+            "node": "Maintenance Alert Generator",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Log Normal Operation",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function1": {
+      "main": [
+        [
+          {
+            "node": "Production Orchestrator Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function2": {
+      "main": [
+        [
+          {
+            "node": "Email Maintenance Team",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "pinData": {}
+}
